@@ -18,9 +18,10 @@ using namespace std;
 
 int OP_MARKER;
 int MY_MARKER;
-int WIN = 1000;
+int WIN = 3600;
 int DRAW = 0;
-int LOSS = -1000;
+int LOSS = -3600;
+int start_time;
 
 struct coord{
 	int x, y, z;
@@ -49,22 +50,119 @@ std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 	return legal_moves;
 }
 
-pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta){
+// returns number of new hexagons made in current move
+int get_hex_made(int hexagons[6][6][6], coord* move){
+	int count = 0, total = 0;
+	for (int i = 0; i < 6; ++i){
+		// not occupied by anyone;
+		if(!hexagons[move->x][move->y][i])break;
+		count++;
+	}
+	if(count == 6)total++;
+	count = 0;
+	if(same[move->x][move->y][move->z]){
+		coord* nmove = same[move->x][move->y][move->z];
+		for (int i = 0; i < 6; ++i){
+			// not occupied by anyone;
+			if(!hexagons[nmove->x][nmove->y][i])break;
+			count++;
+		}
+	}
+	if(count == 6)total++;
+	return total;
+}
+pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta, int my_score, int op_score){
 	// Initialize best move
 	coord* best_move = new coord({-1, -1, -1});
-	int best_score = (marker == OP_MARKER) ? LOSS : WIN;
-
+	int best_score = (marker == MY_MARKER) ? LOSS : WIN;
 	std::vector<coord*> legal_moves = get_legal_moves(hexagons);
+	// No move available
 	if(int(legal_moves.size()) == 0){
+		if(marker == MY_MARKER)best_score = my_score;
+		else best_score = op_score;
 		return make_pair(best_score, best_move);
 	}
-	
+
+	int cur_inc, score;
+	if(depth <= 0 || time(NULL) - start_time > 1.9){
+		// TODO: think of a heuristic
+
+	}
+
+	for(auto move:legal_moves){
+		if(time(NULL) - start_time > 1.9)return make_pair(-100000, best_move);
+		// make move
+		hexagons[move->x][move->y][move->z] = marker;
+		coord* nmove = NULL;
+		if(same[move->x][move->y][move->z]){
+			nmove = same[move->x][move->y][move->z];
+			hexagons[nmove->x][nmove->y][nmove->z] = marker;
+		}
+		cur_inc = get_hex_made(hexagons, move);
+		
+		// Maximizing player's turn
+		if (marker == MY_MARKER)
+		{
+			// no new hex made
+			if(!cur_inc)
+				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
+			else
+				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 100, op_score).first;
+			// Get the best scoring move
+			if (best_score < score)
+			{
+				best_score = score;
+				best_move = move;
+
+				// Check if this branch's best move is worse than the best
+				// option of a previously search branch. If it is, skip it
+				alpha = max(alpha, best_score);
+				
+				hexagons[move->x][move->y][move->z] = 0;
+				if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+
+				if (beta <= alpha) 
+				{ 
+					break; 
+				}
+			}
+
+		} 
+		// Minimizing opponent's turn
+		else
+		{
+			if(!cur_inc)
+				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
+			else
+				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score + cur_inc * 100).first;
+
+			if (best_score > score)
+			{
+				best_score = score;
+				best_move = move;
+
+				// Check if this branch's best move is worse than the best
+				// option of a previously search branch. If it is, skip it
+				beta = std::min(beta, best_score);
+				
+				hexagons[move->x][move->y][move->z] = 0;
+				if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+
+				if (beta <= alpha) 
+				{ 
+					break; 
+				}
+			}
+
+		}
+	}
 	return make_pair(best_score, best_move);
 }
 int main()
 {
 	ios_base::sync_with_stdio(false);
 	cin.tie(NULL);
+	start_time = time(NULL);
 
 	cin >> MY_MARKER;
 	OP_MARKER = 3 - MY_MARKER;
@@ -87,6 +185,19 @@ int main()
         	}
         }
     }
-    minimax_optimization(hexagons, MY_MARKER, 0, LOSS, WIN);
+    pair<int, coord*> ans, prv;
+    int cur_depth = 1;
+    while(time(NULL) - start_time <= 1.9){ 
+		prv = ans;
+    	ans = minimax_optimization(hexagons, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
+		cur_depth++;
+	}
+	if(prv.second->x == -1)
+	{
+		auto x = get_legal_moves(hexagons);
+		cout << x[0]->x<<" "<<x[0]->y<<" "<<x[0]->z<<endl;
+		return 0;
+	}
+	cout << prv.second->x <<" "<<prv.second->y<<" "<<prv.second->z<<endl;
 	return 0;
 }
