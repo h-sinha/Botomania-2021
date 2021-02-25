@@ -22,7 +22,7 @@ int WIN = 3600;
 int DRAW = 0;
 int LOSS = -3600;
 int start_time;
-long double timelimit = 1.5;
+long double timelimit = 1.9;
 
 struct coord{
 	int x, y, z;
@@ -92,11 +92,7 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 	int cur_inc, score;
 	if(depth <= 0){
 		// TODO: think of a heuristic
-		assert(legal_moves[0]->x != -1);
-		if(marker == MY_MARKER)
-			return make_pair(my_score, legal_moves[0]);
-		else
-			return make_pair(op_score, legal_moves[0]);
+		return make_pair(my_score - op_score, best_move);
 	}
 	if(time(NULL) - start_time > timelimit)go();
 
@@ -112,16 +108,14 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		cur_inc = get_hex_made(hexagons, move);
 		
 		// Maximizing player's turn
-		if (marker == MY_MARKER)
-		{
+		if (marker == MY_MARKER){
 			// no new hex made
 			if(!cur_inc)
 				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
 				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 100, op_score).first;
 			// Get the best scoring move
-			if (best_score < score)
-			{
+			if (best_score < score){
 				best_score = score;
 				best_move = move;
 
@@ -133,15 +127,12 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 				if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 
 				if (beta <= alpha) 
-				{ 
 					break; 
-				}
 			}
 
 		} 
 		// Minimizing opponent's turn
-		else
-		{
+		else{
 			if(!cur_inc)
 				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
@@ -166,8 +157,9 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 			}
 
 		}
+		hexagons[move->x][move->y][move->z] = 0;
+		if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 	}
-	assert(best_move->x != -1);
 	return make_pair(best_score, best_move);
 }
 int main()
