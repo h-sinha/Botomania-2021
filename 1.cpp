@@ -22,11 +22,13 @@ int WIN = 3600;
 int DRAW = 0;
 int LOSS = -3600;
 int start_time;
+long double timelimit = 1.5;
 
 struct coord{
 	int x, y, z;
 };
 coord* same[6][6][6];
+pair<int, coord*> ans;
 
 std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 {
@@ -38,7 +40,7 @@ std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 	for (int i = 0; i < 6; ++i){
 		for (int j = 0; j < 6; ++j){
 			for (int k = 0; k < 6; ++k){
-				if(hexagons[i][j][k] == 0 && !done[i][j][j]){
+				if(hexagons[i][j][k] == 0 && !done[i][j][k]){
 					legal_moves.push_back(new coord({i, j, k}));
 					done[i][j][k] = 1;
 					if(same[i][j][k])
@@ -71,6 +73,10 @@ int get_hex_made(int hexagons[6][6][6], coord* move){
 	if(count == 6)total++;
 	return total;
 }
+void go(){
+	cout << ans.second->x<<" "<<ans.second->y<<" "<<ans.second->z<<endl;
+	exit(0);
+}
 pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta, int my_score, int op_score){
 	// Initialize best move
 	coord* best_move = new coord({-1, -1, -1});
@@ -84,13 +90,18 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 	}
 
 	int cur_inc, score;
-	if(depth <= 0 || time(NULL) - start_time > 1.9){
+	if(depth <= 0){
 		// TODO: think of a heuristic
-
+		assert(legal_moves[0]->x != -1);
+		if(marker == MY_MARKER)
+			return make_pair(my_score, legal_moves[0]);
+		else
+			return make_pair(op_score, legal_moves[0]);
 	}
+	if(time(NULL) - start_time > timelimit)go();
 
 	for(auto move:legal_moves){
-		if(time(NULL) - start_time > 1.9)return make_pair(-100000, best_move);
+		if(time(NULL) - start_time > timelimit)go();
 		// make move
 		hexagons[move->x][move->y][move->z] = marker;
 		coord* nmove = NULL;
@@ -156,6 +167,7 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 
 		}
 	}
+	assert(best_move->x != -1);
 	return make_pair(best_score, best_move);
 }
 int main()
@@ -185,19 +197,12 @@ int main()
         	}
         }
     }
-    pair<int, coord*> ans, prv;
+    ans = make_pair(0, new coord({0,0,0}));
     int cur_depth = 1;
-    while(time(NULL) - start_time <= 1.9){ 
-		prv = ans;
+    while(time(NULL) - start_time <= timelimit){ 
     	ans = minimax_optimization(hexagons, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
 		cur_depth++;
 	}
-	if(prv.second->x == -1)
-	{
-		auto x = get_legal_moves(hexagons);
-		cout << x[0]->x<<" "<<x[0]->y<<" "<<x[0]->z<<endl;
-		return 0;
-	}
-	cout << prv.second->x <<" "<<prv.second->y<<" "<<prv.second->z<<endl;
+	cout << ans.second->x <<" "<<ans.second->y<<" "<<ans.second->z<<endl;
 	return 0;
 }
