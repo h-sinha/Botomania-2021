@@ -22,7 +22,7 @@ int WIN = 3600;
 int DRAW = 0;
 int LOSS = -3600;
 std::chrono::steady_clock::time_point start_time;
-long double timelimit = 1950;
+long double timelimit = 500;
 
 struct coord{
 	int x, y, z;
@@ -80,7 +80,7 @@ void go(){
 pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta, int my_score, int op_score){
 	auto end = std::chrono::steady_clock::now();
 
-	if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)go();
+	if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)go();
 
 	// Initialize best move
 	coord* best_move = new coord({-1, -1, -1});
@@ -96,12 +96,14 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 	int cur_inc, score;
 	if(depth <= 0){
 		// TODO: think of a heuristic
-		return make_pair(my_score - op_score, best_move);
+		if(marker == MY_MARKER)return make_pair(my_score - op_score, best_move);
+		else return make_pair(op_score - my_score, best_move);
+
 	}
 
 	for(auto move:legal_moves){
 		auto end = std::chrono::steady_clock::now();
-		if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)go();
+		if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)go();
 		// make move
 		hexagons[move->x][move->y][move->z] = marker;
 		coord* nmove = NULL;
@@ -199,7 +201,7 @@ int main()
     int cur_depth = 1;
     while(1){ 
     	auto end = std::chrono::steady_clock::now();
-		if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)break;
+		if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)break;
     	ans = minimax_optimization(hexagons, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
 		cur_depth++;
 	}
