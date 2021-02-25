@@ -21,15 +21,15 @@ int MY_MARKER;
 int WIN = 3600;
 int DRAW = 0;
 int LOSS = -3600;
-int start_time;
-long double timelimit = 1.9;
+std::chrono::steady_clock::time_point start_time;
+long double timelimit = 1950;
 
 struct coord{
 	int x, y, z;
 };
 coord* same[6][6][6];
 pair<int, coord*> ans;
-
+	
 std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 {
 	std::vector<bool> tmp(6);
@@ -78,6 +78,10 @@ void go(){
 	exit(0);
 }
 pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta, int my_score, int op_score){
+	auto end = std::chrono::steady_clock::now();
+
+	if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)go();
+
 	// Initialize best move
 	coord* best_move = new coord({-1, -1, -1});
 	int best_score = (marker == MY_MARKER) ? LOSS : WIN;
@@ -94,10 +98,10 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		// TODO: think of a heuristic
 		return make_pair(my_score - op_score, best_move);
 	}
-	if(time(NULL) - start_time > timelimit)go();
 
 	for(auto move:legal_moves){
-		if(time(NULL) - start_time > timelimit)go();
+		auto end = std::chrono::steady_clock::now();
+		if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)go();
 		// make move
 		hexagons[move->x][move->y][move->z] = marker;
 		coord* nmove = NULL;
@@ -126,8 +130,11 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 				hexagons[move->x][move->y][move->z] = 0;
 				if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 
-				if (beta <= alpha) 
+				if (beta <= alpha){ 
+					hexagons[move->x][move->y][move->z] = 0;
+					if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 					break; 
+				}
 			}
 
 		} 
@@ -138,20 +145,17 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 			else
 				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score + cur_inc * 100).first;
 
-			if (best_score > score)
-			{
+			if (best_score > score){
 				best_score = score;
 				best_move = move;
 
 				// Check if this branch's best move is worse than the best
 				// option of a previously search branch. If it is, skip it
 				beta = std::min(beta, best_score);
-				
-				hexagons[move->x][move->y][move->z] = 0;
-				if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 
-				if (beta <= alpha) 
-				{ 
+				if (beta <= alpha){ 
+					hexagons[move->x][move->y][move->z] = 0;
+					if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
 					break; 
 				}
 			}
@@ -164,9 +168,10 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 }
 int main()
 {
+	start_time = std::chrono::steady_clock::now();
+	// start_time = time(NULL);
 	ios_base::sync_with_stdio(false);
 	cin.tie(NULL);
-	start_time = time(NULL);
 
 	cin >> MY_MARKER;
 	OP_MARKER = 3 - MY_MARKER;
@@ -189,9 +194,12 @@ int main()
         	}
         }
     }
-    ans = make_pair(0, new coord({0,0,0}));
+    auto v = get_legal_moves(hexagons);
+    ans = make_pair(0, new coord({v[v.size()-1]->x, v[v.size()-1]->y, v[v.size()-1]->z}));
     int cur_depth = 1;
-    while(time(NULL) - start_time <= timelimit){ 
+    while(1){ 
+    	auto end = std::chrono::steady_clock::now();
+		if(std::chrono::duration_cast<std::chrono::microseconds>(end - start_time).count() > timelimit)break;
     	ans = minimax_optimization(hexagons, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
 		cur_depth++;
 	}
