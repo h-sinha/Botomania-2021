@@ -22,9 +22,9 @@ using namespace std;
 
 int OP_MARKER;
 int MY_MARKER;
-int WIN = 3600;
+int WIN = 5000;
 int DRAW = 0;
-int LOSS = -3600;
+int LOSS = -5000;
 std::chrono::steady_clock::time_point start_time;
 long double timelimit = 1000;
 
@@ -58,7 +58,7 @@ std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 			}
 		}
 	}
-	// sort(legal_moves.begin(), legal_moves.end(), comp);
+	// random_shuffle(legal_moves.begin(), legal_moves.end());
 	return legal_moves;
 }
 
@@ -127,7 +127,7 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 			if(!cur_inc)
 				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
-				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 100, op_score).first;
+				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 200, op_score).first;
 			// Get the best scoring move
 			if (best_score < score){
 				best_score = score;
