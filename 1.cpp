@@ -109,6 +109,25 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		return make_pair(my_score - op_score, best_move);
 	}
 
+	// move ordering
+	std::vector<int> tmp(6);
+	std::vector<std::vector<int> > vc(6, tmp);
+	std::vector<std::vector<std::vector<int> > > move_benefit(6, vc);
+	for(auto move:legal_moves)
+	{
+		hexagons[move->x][move->y][move->z] = marker;
+		coord* nmove = NULL;
+		if(same[move->x][move->y][move->z]){
+			nmove = same[move->x][move->y][move->z];
+			hexagons[nmove->x][nmove->y][nmove->z] = marker;
+		}
+		cur_inc = get_hex_made(hexagons, move);
+		hexagons[move->x][move->y][move->z] = 0;
+		if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+
+		move_benefit[move->x][move->y][move->z] += cur_inc * (marker == MY_MARKER ? 1 : -1);
+	}
+	sort(legal_moves.begin(), legal_moves.end(), [move_benefit](coord* a, coord* b){return move_benefit[a->x][a->y][a->z] > move_benefit[b->x][b->y][b->z];});
 	for(auto move:legal_moves){
 		auto end = std::chrono::steady_clock::now();
 		if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)go();
@@ -127,7 +146,7 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 			if(!cur_inc)
 				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
-				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 200, op_score).first;
+				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 101, op_score).first;
 			// Get the best scoring move
 			if (best_score < score){
 				best_score = score;
