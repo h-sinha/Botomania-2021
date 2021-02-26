@@ -1,10 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#pragma GCC target ("avx2")
-#pragma GCC optimization ("O3")
-#pragma GCC optimization ("unroll-loops")
-
 #define DEBUG
 #ifdef DEBUG
 #define debug(...) __f(#__VA_ARGS__, __VA_ARGS__)
@@ -33,18 +29,13 @@ struct coord{
 };
 coord* same[6][6][6];
 pair<int, coord*> ans;
-
-int num_best[6][6][6];
-
-// bool comp(coord* a, coord* b){
-// 	return num_best[a->x][a->y][a->z] > num_best[b->x][b->y][b->z];
-// }
-std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
+	
+deque<coord*> get_legal_moves(int hexagons[6][6][6])
 {
 	std::vector<bool> tmp(6);
 	std::vector<std::vector<bool> > vc(6, tmp);
 	std::vector<std::vector<std::vector<bool> > > done(6, vc);
-	std::vector<coord*> legal_moves;
+	deque<coord*> legal_moves;
 	
 	for (int i = 0; i < 6; ++i){
 		for (int j = 0; j < 6; ++j){
@@ -58,7 +49,6 @@ std::vector<coord*> get_legal_moves(int hexagons[6][6][6])
 			}
 		}
 	}
-	// sort(legal_moves.begin(), legal_moves.end(), comp);
 	return legal_moves;
 }
 
@@ -87,7 +77,12 @@ void go(){
 	cout << ans.second->x<<" "<<ans.second->y<<" "<<ans.second->z<<endl;
 	exit(0);
 }
-pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int depth, int alpha, int beta, int my_score, int op_score){
+void undo_move(int hexagons[6][6][6], deque<coord*>&legal_moves, coord* move, coord* nmove){
+	hexagons[move->x][move->y][move->z] = 0;
+	if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+	legal_moves.push_back(move);
+}
+pair<int, coord*> minimax_optimization(int hexagons[6][6][6], deque<coord*>&legal_moves, int marker, int depth, int alpha, int beta, int my_score, int op_score){
 	auto end = std::chrono::steady_clock::now();
 
 	if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)go();
@@ -95,7 +90,7 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 	// Initialize best move
 	coord* best_move = new coord({-1, -1, -1});
 	int best_score = (marker == MY_MARKER) ? LOSS : WIN;
-	std::vector<coord*> legal_moves = get_legal_moves(hexagons);
+	// std::vector<coord*> legal_moves = get_legal_moves(hexagons);
 	// No move available
 	if(int(legal_moves.size()) == 0){
 		if(marker == MY_MARKER)best_score = my_score;
@@ -108,10 +103,20 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		// TODO: think of a heuristic
 		return make_pair(my_score - op_score, best_move);
 	}
-
-	for(auto move:legal_moves){
+	int total_moves = legal_moves.size();
+	int it = 0;
+	coord* move;
+	while(it < total_moves){
+		it++;
+	// for(auto move:legal_moves){
 		auto end = std::chrono::steady_clock::now();
 		if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)go();
+		move = legal_moves.front();
+		legal_moves.pop_front();
+		if(hexagons[move->x][move->y][move->z]){
+			legal_moves.push_back(move);
+			continue;
+		}
 		// make move
 		hexagons[move->x][move->y][move->z] = marker;
 		coord* nmove = NULL;
@@ -125,24 +130,20 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		if (marker == MY_MARKER){
 			// no new hex made
 			if(!cur_inc)
-				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
+				score = minimax_optimization(hexagons, legal_moves, OP_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
-				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 100, op_score).first;
+				score = minimax_optimization(hexagons, legal_moves, MY_MARKER, depth - 1, alpha, beta, my_score + cur_inc * 100, op_score).first;
 			// Get the best scoring move
 			if (best_score < score){
 				best_score = score;
 				best_move = move;
-
-				// num_best[move->x][move->y][move->z]+=score;
-				// if(nmove)num_best[move->x][move->y][move->z]+=score;
 
 				// Check if this branch's best move is worse than the best
 				// option of a previously search branch. If it is, skip it
 				alpha = max(alpha, best_score);
 				
 				if (beta <= alpha){ 
-					hexagons[move->x][move->y][move->z] = 0;
-					if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+					undo_move(hexagons, legal_moves, move, nmove);
 					break; 
 				}
 			}
@@ -151,31 +152,26 @@ pair<int, coord*> minimax_optimization(int hexagons[6][6][6], int marker, int de
 		// Minimizing opponent's turn
 		else{
 			if(!cur_inc)
-				score = minimax_optimization(hexagons, MY_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
+				score = minimax_optimization(hexagons, legal_moves, MY_MARKER, depth - 1, alpha, beta, my_score, op_score).first;
 			else
-				score = minimax_optimization(hexagons, OP_MARKER, depth - 1, alpha, beta, my_score, op_score + cur_inc * 100).first;
+				score = minimax_optimization(hexagons, legal_moves, OP_MARKER, depth - 1, alpha, beta, my_score, op_score + cur_inc * 100).first;
 
 			if (best_score > score){
 				best_score = score;
 				best_move = move;
-				
-				// num_best[move->x][move->y][move->z]+=score;
-				// if(nmove)num_best[move->x][move->y][move->z]+=score;
 
 				// Check if this branch's best move is worse than the best
 				// option of a previously search branch. If it is, skip it
 				beta = min(beta, best_score);
 
 				if (beta <= alpha){ 
-					hexagons[move->x][move->y][move->z] = 0;
-					if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+					undo_move(hexagons, legal_moves, move, nmove);
 					break; 
 				}
 			}
 
 		}
-		hexagons[move->x][move->y][move->z] = 0;
-		if(nmove)hexagons[nmove->x][nmove->y][nmove->z] = 0;
+		undo_move(hexagons, legal_moves, move, nmove);
 	}
 	return make_pair(best_score, best_move);
 }
@@ -213,9 +209,11 @@ int main()
     while(1){ 
     	auto end = std::chrono::steady_clock::now();
 		if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start_time).count() > timelimit)break;
-    	ans = minimax_optimization(hexagons, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
+    	ans = minimax_optimization(hexagons, v, MY_MARKER, cur_depth, LOSS, WIN, 0, 0);
 		cur_depth++;
 	}
+	// assert(v.size() > 0);
+	// assert(ans.second->x !=  -1);
 	cout << ans.second->x <<" "<<ans.second->y<<" "<<ans.second->z<<endl;
 	return 0;
 }
